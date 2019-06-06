@@ -71,19 +71,19 @@ compile_r() {
   CONFIGURE_OPTIONS=${CONFIGURE_OPTIONS:-$default_configure_options}
 
   # set some common environment variables for the configure step
-  AWK=/usr/bin/awk \
-  LIBnn=lib \
-  PERL=/usr/bin/perl \
-  R_PDFVIEWER=xdg-open \
-  R_BROWSER=xdg-open \
-  R_PAPERSIZE=letter \
-  R_PRINTCMD=/usr/bin/lpr \
-  R_UNZIPCMD=/usr/bin/unzip \
-  R_ZIPCMD=/usr/bin/zip \
-  ./configure \
-    --prefix=/opt/R/${1} \
-    ${CONFIGURE_OPTIONS} \
-    ${build_flag}
+  bash -c "AWK=/usr/bin/awk \
+    LIBnn=lib \
+    PERL=/usr/bin/perl \
+    R_PDFVIEWER=xdg-open \
+    R_BROWSER=xdg-open \
+    R_PAPERSIZE=letter \
+    R_PRINTCMD=/usr/bin/lpr \
+    R_UNZIPCMD=/usr/bin/unzip \
+    R_ZIPCMD=/usr/bin/zip \
+    ./configure \
+      --prefix=/opt/R/${1} \
+      ${CONFIGURE_OPTIONS} \
+      ${build_flag}"
   make clean
   make
   make install
