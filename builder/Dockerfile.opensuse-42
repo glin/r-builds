@@ -61,8 +61,8 @@ RUN zypper --non-interactive --gpg-auto-import-keys -n install \
     && zypper clean
 
 # Install ATLAS
-RUN zypper --non-interactive addrepo https://download.opensuse.org/repositories/home:/cornell_vrdc/openSUSE_Leap_42.3/home:cornell_vrdc.repo \
-    && zypper --non-interactive --gpg-auto-import-keys install libatlas3-basic libatlas3-basic-devel \
+RUN zypper --non-interactive addrepo https://download.opensuse.org/repositories/home:/wkazubski/openSUSE_Leap_42.3/home:wkazubski.repo \
+    && zypper --non-interactive --gpg-auto-import-keys install libatlas3-devel \
     && zypper clean
 
 RUN pip install awscli
@@ -75,7 +75,7 @@ ENV MAKEINFO=makeinfo
 # Configure flags for SUSE that don't use the defaults in build.sh
 ENV CONFIGURE_OPTIONS="\
     --enable-R-shlib \
-    --with-blas=\"-L/usr/lib64/atlas-basic -ltatlas\" \
+    --with-blas=\"-L/usr/lib64/atlas -ltatlas\" \
     --with-lapack \
     --with-tcltk \
     --with-x \
