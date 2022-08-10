@@ -106,7 +106,7 @@ detect_os_version () {
       cat /etc/redhat-release | sed -E 's/[^0-9]+([0-9.]+)[^0-9]*/\1/' | cut -d '.' -f 1
     fi
   fi
-  if [[ "${os}" == "Ubuntu" ]]; then
+  if [[ "${os}" == "Ubuntu" ]] || [[ "${os}" == "Debian" ]]; then
     cat /etc/os-release | grep -e "^VERSION_ID\=*" | cut -f 2 -d '=' | sed -e 's/[".]//g'
   fi
   if [[ "${os}" == "SLES15" ]] || [[ "${os}" == "LEAP15" ]]; then
