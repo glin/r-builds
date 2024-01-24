@@ -22,9 +22,9 @@ R binaries are built for the following Linux operating systems:
 - Ubuntu 18.04, 20.04, 22.04
 - Debian 10, 11
 - CentOS 7
-- Red Hat Enterprise Linux 7, 8
-- openSUSE 15.3
-- SUSE Linux Enterprise 15 SP3
+- Red Hat Enterprise Linux 7, 8, 9
+- openSUSE 15.3, 15.4
+- SUSE Linux Enterprise 15 SP3, 15 SP4
 
 Operating systems are supported until their vendor end-of-support dates, which
 can be found on the [RStudio Platform Support](https://www.rstudio.com/about/platform-support/)
@@ -81,21 +81,39 @@ sudo gdebi r-${R_VERSION}_1_amd64.deb
 #### RHEL/CentOS Linux
 
 Enable the [Extra Packages for Enterprise Linux](https://fedoraproject.org/wiki/EPEL)
-repository (RHEL/CentOS 7 only):
+repository (RHEL/CentOS 7 and RHEL 9 only):
 
 ```bash
 # CentOS / RHEL 7
 sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+# Rocky Linux 9 / AlmaLinux 9
+sudo dnf install dnf-plugins-core
+sudo dnf config-manager --set-enabled crb
+sudo dnf install epel-release
+
+# RHEL 9
+sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 ```
 
-> Note that on RHEL 7, you may also need to enable the Optional repository:
+> On RHEL 7, you may also need to enable the Optional repository:
 > ```bash
-> # For RHEL 7 users with certificate subscriptions:
 > sudo subscription-manager repos --enable "rhel-*-optional-rpms"
 >
-> # Or alternatively, using yum:
+> # If running RHEL 7 in a public cloud, such as Amazon EC2, enable the
+> # Optional repository from Red Hat Update Infrastructure (RHUI) instead
 > sudo yum install yum-utils
 > sudo yum-config-manager --enable "rhel-*-optional-rpms"
+> ```
+
+> On RHEL 9, you may also need to enable the CodeReady Linux Builder repository:
+> ```bash
+> sudo subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms
+> 
+> # If running RHEL 9 in a public cloud, such as Amazon EC2, enable the CodeReady
+> # Linux Builder repository from Red Hat Update Infrastructure (RHUI) instead
+> sudo dnf install dnf-plugins-core
+> sudo dnf config-manager --enable codeready-builder-for-rhel-9-*-rpms
 > ```
 
 Download the rpm package:
@@ -103,8 +121,11 @@ Download the rpm package:
 # CentOS / RHEL 7
 wget https://cdn.rstudio.com/r/centos-7/pkgs/R-${R_VERSION}-1-1.x86_64.rpm
 
-# RHEL 8
+# RHEL 8 / Rocky Linux 8 / AlmaLinux 8
 wget https://cdn.rstudio.com/r/centos-8/pkgs/R-${R_VERSION}-1-1.x86_64.rpm
+
+# RHEL 9 / Rocky Linux 9 / AlmaLinux 9
+wget https://cdn.rstudio.com/r/rhel-9/pkgs/R-${R_VERSION}-1-1.x86_64.rpm
 ```
 
 Then install the package:
@@ -118,6 +139,9 @@ Download the rpm package:
 ```bash
 # openSUSE 15.3 / SLES 15 SP3
 wget https://cdn.rstudio.com/r/opensuse-153/pkgs/R-${R_VERSION}-1-1.x86_64.rpm
+
+# openSUSE 15.4 / SLES 15 SP4
+wget https://cdn.rstudio.com/r/opensuse-154/pkgs/R-${R_VERSION}-1-1.x86_64.rpm
 ```
 
 Then install the package:
@@ -226,6 +250,21 @@ environment:
 
 In order for the makefile to push these new platforms to ECR, add them to the PLATFORMS variable near the top of the Makefile
 
+### test/docker-compose.yml
+
+A new service in the `test/docker-compose.yml` file named according to the `platform-version` and containing the proper entries:
+
+```yaml
+  ubuntu-2204:
+    image: ubuntu:jammy
+    command: /r-builds/test/test-apt.sh
+    environment:
+      - OS_IDENTIFIER=ubuntu-2204
+      - R_VERSION=${R_VERSION}
+    volumes:
+      - ../:/r-builds
+```
+
 ### Submit a Pull Request
 
 Once you've followed the steps above, submit a pull request. On successful merge, builds for this platform will begin to be available from the CDN.
@@ -244,33 +283,44 @@ serverless invoke stepf -n rBuilds -d '{"force": true, "versions": ["3.6.3", "4.
 
 ## Testing
 
-To test the R builds locally, you can build the images:
+Tests are automatically run on each push that changes a file in `builder/`, `test/`, or the `Makefile`.
+These tests validate that R was correctly configured, built, and packaged. By default, the tests run
+for the last 5 minor R versions on each platform.
+
+To run the tests manually, you can navigate to the [GitHub Actions workflow page](https://github.com/rstudio/r-builds/actions/workflows/test.yml)
+and use "Run workflow" to run the tests from a custom branch, list of platforms, and list of R versions.
+
+To skip the tests, add `[skip ci]` to your commit message. See [Skipping workflow runs](https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs)
+for more information.
+
+To test the R builds locally, you can use the `build-r-$PLATFORM` and `test-r-$PLATFORM`
+targets to build R and run the tests. The tests use the quick install script to install R,
+using a locally built R if present, or otherwise a build from the CDN.
 
 ```bash
-# Build images for all platforms
-make docker-build
+# Build R 4.1.3 for Ubuntu 22
+R_VERSION=4.1.3 make build-r-ubuntu-2204
 
-# Or build the image for a single platform
-(cd builder && docker-compose build ubuntu-2004)
+# Test R 4.1.3 for Ubuntu 22
+R_VERSION=4.1.3 make test-r-ubuntu-2204
 ```
 
-Then run the build script:
+Alternatively, you can build an image using the `docker-build-$PLATFORM`
+target, launch a bash session within a container using the `bash-$PLATFORM` target,
+and interactively run the build script:
 
 ```bash
-# Build R for all platforms
-R_VERSION=4.0.5 make docker-build-r
+# Build the image for Ubuntu 22
+make docker-build-ubuntu-2204
 
-# Build R for a single platform
-(cd builder && R_VERSION=4.0.5 docker-compose up ubuntu-2004)
+# Launch a bash session for Ubuntu 22
+make bash-ubuntu-2204
 
-# Alternatively, run the build script from within a container
-docker run -it --rm --entrypoint "/bin/bash" r-builds:ubuntu-2004
+# Build R 4.1.3
+R_VERSION=4.1.3 ./build.sh
 
-# Build R 4.0.5
-R_VERSION=4.0.5 ./build.sh
-
-# Build R devel
-R_VERSION=devel ./build.sh
+# Build R devel with parallel execution to speed up the build
+MAKEFLAGS=-j4 R_VERSION=devel ./build.sh
 
 # Build a prerelease version of R (e.g., alpha or beta)
 R_VERSION=rc R_TARBALL_URL=https://cran.r-project.org/src/base-prerelease/R-latest.tar.gz ./build.sh
